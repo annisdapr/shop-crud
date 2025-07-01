@@ -1,0 +1,102 @@
+package usecases
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	itemRepos "shop-crud/item-service/modules/repositories"
+	purchaseModels "purchase-service/modules/models"
+	purchaseRepos "purchase-service/modules/repositories"
+	"time"
+
+	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+)
+
+var (
+	ErrStockNotSufficient = errors.New("stock for an item is not sufficient")
+	ErrItemNotFound       = errors.New("one or more items not found")
+)
+
+type PurchaseUsecase interface {
+	CreatePurchase(ctx context.Context, userID uuid.UUID, req purchaseModels.CreatePurchaseRequest) (*purchaseModels.Purchase, error)
+	GetPurchaseHistory(ctx context.Context, userID uuid.UUID) ([]purchaseModels.Purchase, error)
+}
+
+type purchaseUsecase struct {
+	purchaseRepo purchaseRepos.PurchaseRepository
+	itemRepo     itemRepos.ItemRepository
+}
+
+func NewPurchaseUsecase(purchaseRepo purchaseRepos.PurchaseRepository, itemRepo itemRepos.ItemRepository) PurchaseUsecase {
+	return &purchaseUsecase{
+		purchaseRepo: purchaseRepo,
+		itemRepo:     itemRepo,
+	}
+}
+
+func (u *purchaseUsecase) CreatePurchase(ctx context.Context, userID uuid.UUID, req purchaseModels.CreatePurchaseRequest) (*purchaseModels.Purchase, error) {
+	var totalAmount float64
+	var purchaseItems []purchaseModels.PurchaseItem
+	var purchaseItemResponses []purchaseModels.PurchaseItemResponse
+	tr := otel.Tracer("purchase-usecase")
+	ctx, span := tr.Start(ctx, "PurchaseUsecase")
+	defer span.End()
+
+
+	span.SetAttributes(
+		attribute.String("user.id", userID.String()),
+		attribute.Int("item.count", len(req.Items)),
+	)
+	// Validasi dan kalkulasi total harga
+	for _, reqItem := range req.Items {
+		item, err := u.itemRepo.FindByID(ctx, reqItem.ItemID)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return nil, ErrItemNotFound
+			}
+			return nil, err
+		}
+		if item.Stock< reqItem.Quantity {
+			return nil, ErrStockNotSufficient
+		}
+
+		totalAmount += float64(reqItem.Quantity) * item.Price
+		purchaseItems = append(purchaseItems, purchaseModels.PurchaseItem{
+			ItemID:          item.ID,
+			Quantity:        reqItem.Quantity,
+			PriceAtPurchase: item.Price,
+		})
+		purchaseItemResponses = append(purchaseItemResponses, purchaseModels.PurchaseItemResponse{
+			ItemID: item.ID,
+			Quantity: reqItem.Quantity,
+			Name: item.Name,
+			Price: item.Price,
+		})
+	}
+	
+	newPurchase := &purchaseModels.Purchase{
+		ID:          uuid.New(),
+		UserID:      userID,
+		TotalAmount: totalAmount,
+		CreatedAt:   time.Now(),
+	}
+
+	err := u.purchaseRepo.CreatePurchaseInTx(ctx, newPurchase, purchaseItems)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrStockNotSufficient
+		}
+		return nil, err
+	}
+	
+	newPurchase.Items = purchaseItemResponses
+	return newPurchase, nil
+}
+
+func (u *purchaseUsecase) GetPurchaseHistory(ctx context.Context, userID uuid.UUID) ([]purchaseModels.Purchase, error) {
+	// Implementasi untuk mengambil riwayat pembelian
+	// (dapat ditambahkan di kemudian hari)
+	return u.purchaseRepo.FindPurchasesByUserID(ctx, userID)
+}

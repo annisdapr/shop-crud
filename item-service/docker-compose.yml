@@ -1,0 +1,15 @@
+# services:
+#   item-service:
+#     build:
+#       context: ./item-service
+#       dockerfile: Dockerfile
+#     container_name: item_service_app
+#     ports:
+#       - "${ITEM_SERVICE_PORT:-5001}:${ITEM_SERVICE_PORT:-5001}"
+#     env_file:
+#       - ./item-service/.env
+#     # depends_on:
+#     #   item_db:
+#     #     condition: service_healthy
+#     restart: always
+

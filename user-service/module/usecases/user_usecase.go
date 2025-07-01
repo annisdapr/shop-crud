@@ -1,0 +1,110 @@
+package usecases
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"user-service/module/models"
+	"user-service/module/repositories"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
+)
+
+// Custom errors untuk penanganan yang lebih baik di layer handler.
+var (
+	ErrEmailExists      = errors.New("email already exists")
+	ErrInvalidCredentials = errors.New("invalid email or password")
+)
+
+// UserUsecase mendefinisikan logika bisnis untuk user.
+type UserUsecase interface {
+	Register(ctx context.Context, req models.RegisterRequest) (*models.User, error)
+	Login(ctx context.Context, req models.LoginRequest) (*models.LoginResponse, error)
+}
+
+type userUsecase struct {
+	userRepo  repositories.UserRepository
+	jwtSecret string
+}
+
+// NewUserUsecase adalah constructor untuk usecase.
+func NewUserUsecase(userRepo repositories.UserRepository, jwtSecret string) UserUsecase {
+	return &userUsecase{
+		userRepo:  userRepo,
+		jwtSecret: jwtSecret,
+	}
+}
+
+// Register menangani logika pendaftaran user baru.
+func (u *userUsecase) Register(ctx context.Context, req models.RegisterRequest) (*models.User, error) {
+	// 1. Cek duplikasi email.
+	_, err := u.userRepo.FindByEmail(ctx, req.Email)
+	if err == nil { // Jika tidak ada error, berarti user ditemukan.
+		return nil, ErrEmailExists
+	}
+	if !errors.Is(err, sql.ErrNoRows) { // Handle error database selain "tidak ditemukan".
+		return nil, err
+	}
+
+	// 2. Hash password menggunakan bcrypt untuk keamanan.
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Siapkan data user baru.
+	newUser := &models.User{
+		ID:           uuid.New(),
+		Name:         req.Name,
+		Email:        req.Email,
+		PasswordHash: string(hashedPassword),
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+
+	// 4. Simpan ke database via repository.
+	if err := u.userRepo.Create(ctx, newUser); err != nil {
+		return nil, err
+	}
+
+	return newUser, nil
+}
+
+// Login menangani logika otentikasi user dan pembuatan token.
+func (u *userUsecase) Login(ctx context.Context, req models.LoginRequest) (*models.LoginResponse, error) {
+	// 1. Cari user berdasarkan email.
+	user, err := u.userRepo.FindByEmail(ctx, req.Email)
+	if err != nil {
+		// Samarkan error "tidak ditemukan" menjadi "kredensial salah" untuk keamanan.
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrInvalidCredentials
+		}
+		return nil, err
+	}
+
+	// 2. Bandingkan password dari request dengan hash di database.
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		return nil, ErrInvalidCredentials // Jika tidak cocok, kredensial salah.
+	}
+
+	// 3. Jika cocok, buat klaim untuk JWT.
+	claims := jwt.MapClaims{
+		"sub":   user.ID, // Subject (standard claim), diisi user ID.
+		"name":  user.Name,
+		"email": user.Email,
+		"exp":   time.Now().Add(time.Hour * 72).Unix(), // Token berlaku 72 jam.
+		"iat":   time.Now().Unix(),                      // Issued At (standard claim).
+	}
+
+	// 4. Buat dan tandatangani token dengan secret key.
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(u.jwtSecret))
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.LoginResponse{AccessToken: tokenString}, nil
+}

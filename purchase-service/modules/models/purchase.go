@@ -1,0 +1,45 @@
+package models
+
+import (
+	"time"
+	"github.com/google/uuid"
+)
+
+// Purchase merepresentasikan data transaksi di tabel 'purchases'.
+type Purchase struct {
+	ID          uuid.UUID `db:"id" json:"id"`
+	UserID      uuid.UUID `db:"user_id" json:"user_id"`
+	TotalAmount float64   `db:"total_amount" json:"total_amount"`
+	CreatedAt   time.Time `db:"created_at" json:"created_at"`
+	Items       []PurchaseItemResponse `json:"items"` // Akan diisi oleh usecase
+}
+
+// PurchaseItem merepresentasikan data di tabel 'purchase_items'.
+type PurchaseItem struct {
+	ID                uuid.UUID `db:"id"`
+	PurchaseID        uuid.UUID `db:"purchase_id"`
+	ItemID            uuid.UUID `db:"item_id"`
+	Quantity          int       `db:"quantity"`
+	PriceAtPurchase   float64   `db:"price_at_purchase"`
+}
+
+// --- DTOs ---
+
+// CreatePurchaseRequest adalah DTO untuk request pembuatan purchase.
+type CreatePurchaseRequest struct {
+	Items []PurchaseItemRequest `json:"items" validate:"required,min=1,dive"`
+}
+
+// PurchaseItemRequest adalah detail item dalam request pembelian.
+type PurchaseItemRequest struct {
+	ItemID   uuid.UUID `json:"item_id" validate:"required"`
+	Quantity int       `json:"quantity" validate:"required,gt=0"`
+}
+
+// PurchaseItemResponse adalah detail item dalam response pembelian.
+type PurchaseItemResponse struct {
+	ItemID   uuid.UUID `json:"item_id"`
+	Quantity int       `json:"quantity"`
+	Name     string    `json:"name"`
+	Price    float64   `json:"price"`
+}

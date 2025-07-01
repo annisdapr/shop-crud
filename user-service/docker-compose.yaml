@@ -1,0 +1,11 @@
+# services:
+#   user-service:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     container_name: user_service_app
+#     restart: always
+#     ports:
+#       - "${USER_SERVICE_PORT:-5000}:${USER_SERVICE_PORT:-5000}" # default 5000 jika tidak ada di .env
+#     env_file:
+#       - .env
