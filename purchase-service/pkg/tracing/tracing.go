@@ -23,7 +23,7 @@ func getEnvOrDefault(key, fallback string) string {
 
 func InitTracerProvider(serviceName, collectorHost string) (*sdktrace.TracerProvider, error) {
    ctx := context.Background()
-   token := getEnvOrDefault("OTEL_AUTH_TOKEN", "")
+   token := getEnvOrDefault("ZO_ROOT_USER_TOKEN", "")
    headers := make(map[string]string)
    if token != "" {
        headers["Authorization"] = fmt.Sprintf("Bearer %s", token)
