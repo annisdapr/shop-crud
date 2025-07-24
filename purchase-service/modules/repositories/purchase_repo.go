@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/otel"
 )
 
 type PurchaseRepository interface {
@@ -25,48 +26,65 @@ func NewPurchaseRepository(db *pgxpool.Pool) PurchaseRepository {
 }
 
 func (r *purchaseRepository) CreatePurchaseInTx(ctx context.Context, purchase *purchaseModels.Purchase, items []purchaseModels.PurchaseItem) error {
-	// 1. Memulai transaksi menggunakan db.Begin() dari pgxpool
+	tr := otel.Tracer("purchase-repository")
+	ctx, span := tr.Start(ctx, "PurchaseRepository.CreatePurchaseInTx")
+	defer span.End()
+
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
+		span.RecordError(err)
 		return err
 	}
-	// Defer Rollback akan membatalkan transaksi jika terjadi panic atau error sebelum Commit.
 	defer tx.Rollback(ctx)
 
-	// 2. Buat record di tabel 'purchases' menggunakan tx.Exec()
+	// 1. Insert ke tabel purchases
 	purchaseQuery := `INSERT INTO purchases (id, user_id, total_amount, created_at) VALUES ($1, $2, $3, $4)`
 	_, err = tx.Exec(ctx, purchaseQuery, purchase.ID, purchase.UserID, purchase.TotalAmount, purchase.CreatedAt)
 	if err != nil {
+		_, insertSpan := tr.Start(ctx, "InsertPurchase")
+		insertSpan.End()
+		span.RecordError(err)
 		return err
 	}
 
-	// 3. Loop melalui setiap item yang dibeli
 	itemQuery := `INSERT INTO purchase_items (id, purchase_id, item_id, quantity, price_at_purchase) VALUES ($1, $2, $3, $4, $5)`
 	updateStockQuery := `UPDATE items SET stock = stock - $1 WHERE id = $2 AND stock >= $1`
 
 	for _, item := range items {
-		// 3a. Buat record di 'purchase_items'
+		// 2. Sub-span untuk insert purchase item
+		_, itemSpan := tr.Start(ctx, "InsertPurchaseItem")
 		_, err = tx.Exec(ctx, itemQuery, uuid.New(), purchase.ID, item.ItemID, item.Quantity, item.PriceAtPurchase)
+		itemSpan.End()
 		if err != nil {
+			span.RecordError(err)
 			return err
 		}
 
-		// 3b. Update stok di tabel 'items'.
+		// 3. Sub-span untuk update stock
+		_, stockSpan := tr.Start(ctx, "UpdateItemStock")
 		result, err := tx.Exec(ctx, updateStockQuery, item.Quantity, item.ItemID)
+		stockSpan.End()
 		if err != nil {
+			span.RecordError(err)
 			return err
 		}
-		// Cek apakah ada baris yang terpengaruh untuk memastikan stok cukup.
 		if result.RowsAffected() == 0 {
-			// Jika tidak ada baris yang diupdate, berarti stok tidak cukup.
-			// Kembalikan pgx.ErrNoRows agar bisa ditangani di usecase.
 			return pgx.ErrNoRows
 		}
 	}
 
-	// 4. Jika semua query berhasil, commit transaksi.
-	return tx.Commit(ctx)
+	// 4. Commit transaction
+	_, commitSpan := tr.Start(ctx, "CommitTransaction")
+	err = tx.Commit(ctx)
+	commitSpan.End()
+	if err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	return nil
 }
+
 
 func (r *purchaseRepository) FindPurchasesByUserID(ctx context.Context, userID uuid.UUID) ([]purchaseModels.Purchase, error) {
 	var purchases []purchaseModels.Purchase

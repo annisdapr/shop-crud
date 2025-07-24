@@ -7,6 +7,9 @@ import (
 	purchaseModels "purchase-service/modules/models"
 	purchaseUsecases "purchase-service/modules/usecases"
 
+	"go.opentelemetry.io/otel"
+    "go.opentelemetry.io/otel/attribute"
+
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
@@ -28,7 +31,12 @@ func (h *PurchaseHandler) RegisterRoutes(router *echo.Group, authMiddleware echo
 }
 
 func (h *PurchaseHandler) CreatePurchase(c echo.Context) error {
-	// 1. Ambil data user dari context yang sudah di-set oleh middleware
+	// Start tracing span
+	tracer := otel.Tracer("purchase-service-handler")
+	ctx, span := tracer.Start(c.Request().Context(), "CreatePurchaseHandler")
+	defer span.End()
+
+	// 1. Ambil data user dari context token
 	claims, ok := middleware.GetUserFromContext(c)
 	if !ok {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token claims"})
@@ -47,8 +55,15 @@ func (h *PurchaseHandler) CreatePurchase(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	// 3. Panggil usecase
-	purchase, err := h.purchaseUsecase.CreatePurchase(c.Request().Context(), userID, req)
+	// Tambahkan atribut tracing
+	span.SetAttributes(
+		attribute.String("http.route", c.Path()),
+		attribute.String("user.id", userID.String()),
+		attribute.Int("item.count", len(req.Items)),
+	)
+
+	// 3. Proses usecase
+	purchase, err := h.purchaseUsecase.CreatePurchase(ctx, userID, req)
 	if err != nil {
 		if errors.Is(err, purchaseUsecases.ErrItemNotFound) || errors.Is(err, purchaseUsecases.ErrStockNotSufficient) {
 			return c.JSON(http.StatusConflict, map[string]string{"error": err.Error()})

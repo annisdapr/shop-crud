@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	itemRepos "shop-crud/item-service/modules/repositories"
+
+	//itemRepos "shop-crud/item-service/modules/repositories"
+	"purchase-service/modules/clients"
 	purchaseModels "purchase-service/modules/models"
 	purchaseRepos "purchase-service/modules/repositories"
 	"time"
@@ -12,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -26,13 +29,15 @@ type PurchaseUsecase interface {
 
 type purchaseUsecase struct {
 	purchaseRepo purchaseRepos.PurchaseRepository
-	itemRepo     itemRepos.ItemRepository
+	//itemRepo     itemRepos.ItemRepository
+	itemClient   clients.ItemClient 
 }
 
-func NewPurchaseUsecase(purchaseRepo purchaseRepos.PurchaseRepository, itemRepo itemRepos.ItemRepository) PurchaseUsecase {
+func NewPurchaseUsecase(purchaseRepo purchaseRepos.PurchaseRepository, itemClient clients.ItemClient) PurchaseUsecase {
 	return &purchaseUsecase{
 		purchaseRepo: purchaseRepo,
-		itemRepo:     itemRepo,
+		//itemRepo:     itemRepo,
+		itemClient:   itemClient,
 	}
 }
 
@@ -40,42 +45,49 @@ func (u *purchaseUsecase) CreatePurchase(ctx context.Context, userID uuid.UUID, 
 	var totalAmount float64
 	var purchaseItems []purchaseModels.PurchaseItem
 	var purchaseItemResponses []purchaseModels.PurchaseItemResponse
-	tr := otel.Tracer("purchase-usecase")
-	ctx, span := tr.Start(ctx, "PurchaseUsecase")
-	defer span.End()
 
+	tr := otel.Tracer("purchase-usecase")
+	ctx, span := tr.Start(ctx, "PurchaseUsecase.CreatePurchase")
+	defer span.End()
 
 	span.SetAttributes(
 		attribute.String("user.id", userID.String()),
 		attribute.Int("item.count", len(req.Items)),
 	)
+
 	// Validasi dan kalkulasi total harga
 	for _, reqItem := range req.Items {
-		item, err := u.itemRepo.FindByID(ctx, reqItem.ItemID)
+		// Sub-span untuk GetItemByID
+		itemSpanCtx, itemSpan := tr.Start(ctx, "ItemClient.GetItemByID",
+			trace.WithAttributes(attribute.String("item.id", reqItem.ItemID.String())),
+		)
+		item, err := u.itemClient.GetItemByID(itemSpanCtx, reqItem.ItemID)
+		itemSpan.End()
+
 		if err != nil {
 			if err == sql.ErrNoRows {
 				return nil, ErrItemNotFound
 			}
 			return nil, err
 		}
-		if item.Stock< reqItem.Quantity {
+		if item.Stock < reqItem.Quantity {
 			return nil, ErrStockNotSufficient
 		}
 
 		totalAmount += float64(reqItem.Quantity) * item.Price
 		purchaseItems = append(purchaseItems, purchaseModels.PurchaseItem{
-			ItemID:          item.ID,
+			ItemID:          reqItem.ItemID,
 			Quantity:        reqItem.Quantity,
 			PriceAtPurchase: item.Price,
 		})
 		purchaseItemResponses = append(purchaseItemResponses, purchaseModels.PurchaseItemResponse{
-			ItemID: item.ID,
+			ItemID:   reqItem.ItemID,
 			Quantity: reqItem.Quantity,
-			Name: item.Name,
-			Price: item.Price,
+			Name:     item.Name,
+			Price:    item.Price,
 		})
 	}
-	
+
 	newPurchase := &purchaseModels.Purchase{
 		ID:          uuid.New(),
 		UserID:      userID,
@@ -83,17 +95,22 @@ func (u *purchaseUsecase) CreatePurchase(ctx context.Context, userID uuid.UUID, 
 		CreatedAt:   time.Now(),
 	}
 
-	err := u.purchaseRepo.CreatePurchaseInTx(ctx, newPurchase, purchaseItems)
+	// Sub-span untuk penyimpanan DB
+	dbSpanCtx, dbSpan := tr.Start(ctx, "PurchaseRepo.CreatePurchaseInTx")
+	err := u.purchaseRepo.CreatePurchaseInTx(dbSpanCtx, newPurchase, purchaseItems)
+	dbSpan.End()
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrStockNotSufficient
 		}
 		return nil, err
 	}
-	
+
 	newPurchase.Items = purchaseItemResponses
 	return newPurchase, nil
 }
+
 
 func (u *purchaseUsecase) GetPurchaseHistory(ctx context.Context, userID uuid.UUID) ([]purchaseModels.Purchase, error) {
 	// Implementasi untuk mengambil riwayat pembelian

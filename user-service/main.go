@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
-	"user-service/config" 
+	"user-service/config"
+	"user-service/pkg/tracing"
 
 	"user-service/module/handlers"
 	"user-service/module/repositories"
@@ -29,9 +31,21 @@ func (cv *CustomValidator) Validate(i interface{}) error {
 }
 
 func main() {
-	// Inisialisasi koneksi database dari config package
-	config.InitDB()
-	defer config.CloseDB()
+   // Initialize tracing provider
+   //tempo:4318
+   tp, err := tracing.InitTracerProvider("user-service", "tempo:4318")
+   if err != nil {
+       log.Fatal(err)
+   }
+   defer func() {
+       if err := tp.Shutdown(context.Background()); err != nil {
+           log.Fatal(err)
+       }
+   }()
+
+   // Inisialisasi koneksi database dari config package
+   config.InitDB()
+   defer config.CloseDB()
 
 	appPort := os.Getenv("PORT")
 	if appPort == "" {
