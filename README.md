@@ -639,3 +639,38 @@ func (h *UserHandler) Register(c echo.Context) error {
 	return c.JSON(http.StatusCreated, user) // 201 Created
 }
 ```
+
+## See tracing and log
+### Step 1: Open grafana 
+Open your web browser and access the Grafana dashboard at the following address:
+http://localhost:5080
+
+Log in using the default credentials if you haven't changed them:
+```
+Username: admin
+Password: admin
+```
+### Step 2: Add data source for Tempo
+1. In the left menu, go to Administration > Data sources.
+2. Click "Add new data source".
+3. Search for and select Tempo.
+4. In the settings page, under Connection, set the URL to:
+http://tempo:3200
+5. Scroll down and click "Save & test". You should see a "Data source is working" message
+
+### Step 3: Add data source for Loki
+1. In the left menu, go to Administration > Data sources.
+2. Click "Add new data source".
+3. Search for and select Loki.
+4. In the settings page, under Connection, set the URL to:
+http://tempo:3100
+5. Scroll down and click "Save & test". You should see a "Data source is working" message
+
+
+### Step 4: View Traces and Logs
+1. In the left menu, click the compass icon (🧭 Explore).
+2. Select the Tempo data source from the dropdown at the top.
+3. Click on any trace in the list to open the flame graph.
+4. Click on a specific span within the trace.
+
+To view logs you can switch to Loki data source and explore the logs.

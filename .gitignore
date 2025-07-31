@@ -1,0 +1,51 @@
+# Golang build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Vendor directory (if not using vendoring)
+vendor/
+
+# IDE/editor related
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Env files
+.env
+**/.env
+
+# Docker-related volumes
+postgres-data/
+.postgres-data/
+**/.postgres-data/
+**/grafana-data/
+**/loki-data/
+**/tempo-data/
+
+# Node-related (if you have frontend or use npm in any part)
+node_modules/
+
+# Coverage files
+coverage/
+*.coverprofile
+*.cov
+
+# Build output
+bin/
+dist/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Git merge files
+*.orig
