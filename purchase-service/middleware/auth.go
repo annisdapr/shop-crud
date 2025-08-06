@@ -10,16 +10,14 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// Definisikan error standar untuk respons yang konsisten.
 var (
-	// ErrMissingAuthHeader dikembalikan jika header Authorization tidak ada atau formatnya salah.
+	// ErrMissingAuthHeader if missing header auth or wrong format
 	ErrMissingAuthHeader = echo.NewHTTPError(http.StatusUnauthorized, "Missing or malformed JWT")
-	// ErrInvalidJWT dikembalikan jika token tidak valid atau sudah kedaluwarsa.
+	// ErrInvalidJWT if invalid token or expired
 	ErrInvalidJWT        = echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired JWT")
 )
 
-// JWTAuthMiddleware membuat sebuah instance middleware Echo untuk validasi token JWT.
-// Middleware ini menerima 'jwtSecret' sebagai argumen untuk memverifikasi tanda tangan token.
+// JWTAuthMiddleware create an instance middleware Echo for JWT token validation .
 func JWTAuthMiddleware(jwtSecret string) echo.MiddlewareFunc {
 	// Middleware di Echo adalah sebuah fungsi yang mengembalikan fungsi lain.
 	return func(next echo.HandlerFunc) echo.HandlerFunc {

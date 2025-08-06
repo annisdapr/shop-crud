@@ -30,7 +30,6 @@ func InitDB() {
 		log.Fatalf("Tidak dapat terhubung ke database: %v", err)
 	}
 
-	// DITAMBAHKAN: Lakukan ping untuk memverifikasi koneksi benar-benar berhasil.
 	if err = DBPool.Ping(context.Background()); err != nil {
 		log.Fatalf("Gagal melakukan ping ke database: %v", err)
 	}

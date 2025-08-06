@@ -23,7 +23,7 @@ func (h *PurchaseHandler) RegisterRoutes(router *echo.Group, authMiddleware echo
 	purchaseGroup := router.Group("/purchases", authMiddleware) // Semua endpoint di sini terproteksi
 	{
 		purchaseGroup.POST("", h.CreatePurchase)
-		// purchaseGroup.GET("", h.GetHistory) // Bisa ditambahkan nanti
+		purchaseGroup.GET("", h.GetHistory) // Bisa ditambahkan nanti
 	}
 }
 
@@ -58,4 +58,25 @@ func (h *PurchaseHandler) CreatePurchase(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, purchase)
+}
+
+func (h *PurchaseHandler) GetHistory(c echo.Context) error {
+	// Ambil user dari context
+	claims, ok := middleware.GetUserFromContext(c)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token claims"})
+	}
+	userID, err := uuid.Parse(claims["sub"].(string))
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid user ID in token"})
+	}
+
+	// Ambil riwayat pembelian dari usecase
+	history, err := h.purchaseUsecase.GetPurchaseHistory(c.Request().Context(), userID)
+	if err != nil {
+		c.Logger().Errorf("Error getting purchase history: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get purchase history"})
+	}
+
+	return c.JSON(http.StatusOK, history)
 }

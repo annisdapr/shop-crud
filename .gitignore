@@ -1,0 +1,61 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go build artifacts
+/bin/
+/build/
+/dist/
+*.log
+
+# Go workspace file (Go 1.18+)
+go.work
+go.work.sum
+
+# Dependency directories (may vary by module)
+vendor/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE/editor config
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+
+# Environment and config files
+.env
+.env.*     # like .env.dev, .env.prod
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# Coverage/test output
+coverage.out
+*.coverprofile
+
+# Test cache
+/tmp/
+*.tmp
+
+# Node modules (if frontend like ui-ai-code-review is included)
+node_modules/
+
+# Ignore local SQLite or other dev DBs (if any)
+*.sqlite
+*.db
+
+# OpenObserve or tracing data (if any logs stored locally)
+tracing-data/

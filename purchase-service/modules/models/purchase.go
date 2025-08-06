@@ -5,7 +5,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Purchase merepresentasikan data transaksi di tabel 'purchases'.
+
 type Purchase struct {
 	ID          uuid.UUID `db:"id" json:"id"`
 	UserID      uuid.UUID `db:"user_id" json:"user_id"`
@@ -14,7 +14,7 @@ type Purchase struct {
 	Items       []PurchaseItemResponse `json:"items"` // Akan diisi oleh usecase
 }
 
-// PurchaseItem merepresentasikan data di tabel 'purchase_items'.
+
 type PurchaseItem struct {
 	ID                uuid.UUID `db:"id"`
 	PurchaseID        uuid.UUID `db:"purchase_id"`
@@ -23,23 +23,36 @@ type PurchaseItem struct {
 	PriceAtPurchase   float64   `db:"price_at_purchase"`
 }
 
-// --- DTOs ---
 
-// CreatePurchaseRequest adalah DTO untuk request pembuatan purchase.
 type CreatePurchaseRequest struct {
 	Items []PurchaseItemRequest `json:"items" validate:"required,min=1,dive"`
 }
 
-// PurchaseItemRequest adalah detail item dalam request pembelian.
+
 type PurchaseItemRequest struct {
 	ItemID   uuid.UUID `json:"item_id" validate:"required"`
 	Quantity int       `json:"quantity" validate:"required,gt=0"`
 }
 
-// PurchaseItemResponse adalah detail item dalam response pembelian.
+
 type PurchaseItemResponse struct {
 	ItemID   uuid.UUID `json:"item_id"`
 	Quantity int       `json:"quantity"`
 	Name     string    `json:"name"`
 	Price    float64   `json:"price"`
+}
+
+type PurchaseHistoryResponse struct {
+	PurchaseID   uuid.UUID             `json:"purchase_id"`
+	TotalAmount  float64               `json:"total_amount"`
+	PurchasedAt  time.Time             `json:"purchased_at"`
+	Items        []PurchaseItemHistory `json:"items"`
+}
+
+type PurchaseItemHistory struct {
+	ItemID          uuid.UUID `json:"item_id"`
+	Name            string    `json:"name"`
+	Quantity        int       `json:"quantity"`
+	PriceAtPurchase float64   `json:"price_at_purchase"`
+	TotalPrice      float64   `json:"total_price"`
 }

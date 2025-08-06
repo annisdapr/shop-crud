@@ -9,8 +9,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
-
-// Definisikan error standar untuk respons yang konsisten.
 var (
 	// ErrMissingAuthHeader dikembalikan jika header Authorization tidak ada atau formatnya salah.
 	ErrMissingAuthHeader = echo.NewHTTPError(http.StatusUnauthorized, "Missing or malformed JWT")
