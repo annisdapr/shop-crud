@@ -18,15 +18,12 @@ func NewItemHandler(itemUsecase usecases.ItemUsecase) *ItemHandler {
 	return &ItemHandler{itemUsecase: itemUsecase}
 }
 
-// RegisterRoutes mendaftarkan semua endpoint yang berhubungan dengan item.
 func (h *ItemHandler) RegisterRoutes(router *echo.Group, authMiddleware echo.MiddlewareFunc) {
 	itemGroup := router.Group("/items")
-	
-	// Endpoint yang tidak memerlukan otentikasi
+
 	itemGroup.GET("", h.GetAllItems)
 	itemGroup.GET("/:id", h.GetItemByID)
 
-	// Endpoint yang memerlukan otentikasi (misalnya, untuk admin)
 	itemGroup.POST("", h.CreateItem, authMiddleware)
 	itemGroup.PUT("/:id", h.UpdateItem, authMiddleware)
 	itemGroup.DELETE("/:id", h.DeleteItem, authMiddleware)

@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ItemRepository mendefinisikan interface untuk operasi data item.
 type ItemRepository interface {
 	Create(ctx context.Context, item *models.Item) error
 	FindAll(ctx context.Context) ([]models.Item, error)
@@ -22,7 +21,6 @@ type itemRepository struct {
 	db *pgxpool.Pool
 }
 
-// NewItemRepository adalah constructor untuk repository item.
 func NewItemRepository(db *pgxpool.Pool) ItemRepository {
 	return &itemRepository{db: db}
 }
@@ -38,18 +36,14 @@ func (r *itemRepository) FindAll(ctx context.Context) ([]models.Item, error) {
 	var items []models.Item
 	query := `SELECT id, name, description, price, stock, created_at, updated_at FROM items ORDER BY created_at DESC`
 
-	// 1. Jalankan query. Ini mengembalikan 'rows' untuk diiterasi.
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	// 2. Pastikan untuk menutup rows setelah selesai. Ini sangat penting.
 	defer rows.Close()
 
-	// 3. Iterasi melalui setiap baris hasil query.
 	for rows.Next() {
 		var item models.Item
-		// 4. Scan setiap kolom dari baris saat ini ke dalam struct 'item'.
 		err := rows.Scan(
 			&item.ID,
 			&item.Name,
@@ -62,11 +56,9 @@ func (r *itemRepository) FindAll(ctx context.Context) ([]models.Item, error) {
 		if err != nil {
 			return nil, err
 		}
-		// 5. Tambahkan item yang sudah di-scan ke dalam slice.
 		items = append(items, item)
 	}
 
-	// 6. Cek apakah ada error selama iterasi.
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
@@ -78,7 +70,6 @@ func (r *itemRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.It
 	var item models.Item
 	query := `SELECT id, name, description, price, stock, created_at, updated_at FROM items WHERE id = $1`
 	
-	// Pola ini sama dengan yang kita gunakan di user_repository.
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&item.ID,
 		&item.Name,
@@ -90,7 +81,6 @@ func (r *itemRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.It
 	)
 
 	if err != nil {
-		// pgx.ErrNoRows adalah error standar jika tidak ada baris yang ditemukan.
 		return nil, err
 	}
 

@@ -23,12 +23,11 @@ func (h *PurchaseHandler) RegisterRoutes(router *echo.Group, authMiddleware echo
 	purchaseGroup := router.Group("/purchases", authMiddleware) // Semua endpoint di sini terproteksi
 	{
 		purchaseGroup.POST("", h.CreatePurchase)
-		purchaseGroup.GET("", h.GetHistory) // Bisa ditambahkan nanti
+		purchaseGroup.GET("", h.GetHistory) 
 	}
 }
 
 func (h *PurchaseHandler) CreatePurchase(c echo.Context) error {
-	// 1. Ambil data user dari context yang sudah di-set oleh middleware
 	claims, ok := middleware.GetUserFromContext(c)
 	if !ok {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token claims"})
@@ -38,7 +37,6 @@ func (h *PurchaseHandler) CreatePurchase(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid user ID in token"})
 	}
 
-	// 2. Bind dan validasi request body
 	var req purchaseModels.CreatePurchaseRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
@@ -47,7 +45,6 @@ func (h *PurchaseHandler) CreatePurchase(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	// 3. Panggil usecase
 	purchase, err := h.purchaseUsecase.CreatePurchase(c.Request().Context(), userID, req)
 	if err != nil {
 		if errors.Is(err, purchaseUsecases.ErrItemNotFound) || errors.Is(err, purchaseUsecases.ErrStockNotSufficient) {
@@ -61,7 +58,7 @@ func (h *PurchaseHandler) CreatePurchase(c echo.Context) error {
 }
 
 func (h *PurchaseHandler) GetHistory(c echo.Context) error {
-	// Ambil user dari context
+
 	claims, ok := middleware.GetUserFromContext(c)
 	if !ok {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token claims"})
@@ -71,7 +68,6 @@ func (h *PurchaseHandler) GetHistory(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid user ID in token"})
 	}
 
-	// Ambil riwayat pembelian dari usecase
 	history, err := h.purchaseUsecase.GetPurchaseHistory(c.Request().Context(), userID)
 	if err != nil {
 		c.Logger().Errorf("Error getting purchase history: %v", err)

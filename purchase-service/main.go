@@ -13,7 +13,7 @@ import (
 	"purchase-service/modules/usecases"
 
 	authmiddle "purchase-service/middleware"
-	itemRepositories "shop-crud/item-service/modules/repositories"
+	"purchase-service/modules/clients"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -55,16 +55,12 @@ func main() {
 
 	// Init repo & usecase dengan shared DB
 	purchaseRepo := repositories.NewPurchaseRepository(config.DBPool)
-	itemRepo := itemRepositories.NewItemRepository(config.DBPool)
-	purchaseUsecase := usecases.NewPurchaseUsecase(purchaseRepo, itemRepo)
+	
+	itemClient := clients.NewItemClient("http://item-service:5001/api/v1")
+	purchaseUsecase := usecases.NewPurchaseUsecase(purchaseRepo, itemClient)
 
 	// Handler
 	purchaseHandler := handlers.NewPurchaseHandler(purchaseUsecase)
-
-	// Routes dengan JWT Middleware
-	// purchaseHandler.RegisterRoutes(v1, middleware.JWTWithConfig(middleware.JWTConfig{
-	// 	SigningKey: []byte(jwtSecret),
-	// }))
 	purchaseHandler.RegisterRoutes(v1, authmiddle.JWTAuthMiddleware(jwtSecret))
 
 

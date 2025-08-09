@@ -11,7 +11,7 @@ type Purchase struct {
 	UserID      uuid.UUID `db:"user_id" json:"user_id"`
 	TotalAmount float64   `db:"total_amount" json:"total_amount"`
 	CreatedAt   time.Time `db:"created_at" json:"created_at"`
-	Items       []PurchaseItemResponse `json:"items"` // Akan diisi oleh usecase
+	Items       []PurchaseItemResponse `json:"items"` 
 }
 
 

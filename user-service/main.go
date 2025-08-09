@@ -29,7 +29,6 @@ func (cv *CustomValidator) Validate(i interface{}) error {
 }
 
 func main() {
-	// Inisialisasi koneksi database dari config package
 	config.InitDB()
 	defer config.CloseDB()
 
@@ -51,13 +50,11 @@ func main() {
 
 	v1 := e.Group("/api/v1")
 
-	// Inisialisasi repository, usecase, dan handler
 	userRepo := repositories.NewUserRepository(config.DBPool)
 	userUsecase := usecases.NewUserUsecase(userRepo, jwtSecret)
 	userHandler := handlers.NewUserHandler(userUsecase)
 	userHandler.RegisterRoutes(v1)
-
-	// Jalankan server
+	
 	addr := fmt.Sprintf(":%s", appPort)
 	log.Printf("✅ User service berjalan di port %s", appPort)
 	if err := e.Start(addr); err != nil && err != http.ErrServerClosed {

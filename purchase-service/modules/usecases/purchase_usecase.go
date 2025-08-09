@@ -4,7 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	itemRepos "shop-crud/item-service/modules/repositories"
+	//itemRepos "shop-crud/item-service/modules/repositories"
+	"purchase-service/modules/clients"
 	purchaseModels "purchase-service/modules/models"
 	purchaseRepos "purchase-service/modules/repositories"
 	"time"
@@ -26,13 +27,13 @@ type PurchaseUsecase interface {
 
 type purchaseUsecase struct {
 	purchaseRepo purchaseRepos.PurchaseRepository
-	itemRepo     itemRepos.ItemRepository
+	itemClient   clients.ItemClient 
 }
 
-func NewPurchaseUsecase(purchaseRepo purchaseRepos.PurchaseRepository, itemRepo itemRepos.ItemRepository) PurchaseUsecase {
+func NewPurchaseUsecase(purchaseRepo purchaseRepos.PurchaseRepository, itemClient clients.ItemClient) PurchaseUsecase {
 	return &purchaseUsecase{
 		purchaseRepo: purchaseRepo,
-		itemRepo:     itemRepo,
+		itemClient:   itemClient,
 	}
 }
 
@@ -49,9 +50,9 @@ func (u *purchaseUsecase) CreatePurchase(ctx context.Context, userID uuid.UUID, 
 		attribute.String("user.id", userID.String()),
 		attribute.Int("item.count", len(req.Items)),
 	)
-	// Validasi dan kalkulasi total harga
+
 	for _, reqItem := range req.Items {
-		item, err := u.itemRepo.FindByID(ctx, reqItem.ItemID)
+		item, err := u.itemClient.GetItemByID(ctx, reqItem.ItemID)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				return nil, ErrItemNotFound
@@ -109,8 +110,7 @@ func (u *purchaseUsecase) GetPurchaseHistory(ctx context.Context, userID uuid.UU
 
 		var itemResponses []purchaseModels.PurchaseItemResponse
 		for _, item := range items {
-			// Ambil detail item dari itemRepo
-			itemDetail, err := u.itemRepo.FindByID(ctx, item.ItemID)
+			itemDetail, err := u.itemClient.GetItemByID(ctx, item.ItemID)
 			if err != nil {
 				return nil, err
 			}

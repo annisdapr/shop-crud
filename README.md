@@ -427,10 +427,6 @@ All endpoints return errors in a consistent format:
 
 ### Service Ports
 
-- **User Service**: `8081`
-- **Item Service**: `8082`
-- **Purchase Service**: `8083`
-- **OpenObserve UI**: `5080`
-- **OpenObserve Logs**: `5081`
-- **OpenObserve Metrics**: `5082`
-- **OpenObserve OTLP Traces**: `5083`
+- **User Service**: `5000`
+- **Item Service**: `5001`
+- **Purchase Service**: `5002`

@@ -10,37 +10,38 @@ import (
 
 var DBPool *pgxpool.Pool
 
-// InitDB menginisialisasi koneksi database.
+// InitDB initializes the database connection.
 func InitDB() {
 	cfg := GetConfig()
-	dbURL := cfg.DBUrl // Menggunakan nilai dari struct Config
+	dbURL := cfg.DBUrl // From Config struct
 
 	config, err := pgxpool.ParseConfig(dbURL)
 	if err != nil {
 		log.Fatalf("Error parsing database URL: %v", err)
 	}
 
-	config.MaxConns = 10                  // Maksimum koneksi yang diizinkan
-	config.MinConns = 2                   // Minimum koneksi yang aktif
-	config.HealthCheckPeriod = 1 * time.Minute // Mengecek kesehatan koneksi setiap 1 menit
+	config.MaxConns = 10                  // Max allowed connections
+	config.MinConns = 2                   // Minimum active connections
+	config.HealthCheckPeriod = 1 * time.Minute // Check connection health every 1 minute
 
-	// Buat pool koneksi
+	// Create connection pool
 	DBPool, err = pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
-		log.Fatalf("Tidak dapat terhubung ke database: %v", err)
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
+	// Verify the connection with a ping
 	if err = DBPool.Ping(context.Background()); err != nil {
-		log.Fatalf("Gagal melakukan ping ke database: %v", err)
+		log.Fatalf("Failed to ping database: %v", err)
 	}
 
-	log.Println("✅ Database berhasil terhubung!")
+	log.Println("✅ Database connected successfully!")
 }
 
-// CloseDB untuk menutup koneksi saat aplikasi berhenti.
+// CloseDB closes the database connection when the app stops.
 func CloseDB() {
 	if DBPool != nil {
 		DBPool.Close()
-		log.Println("🔌 Koneksi database ditutup.")
+		log.Println("🔌 Database connection closed.")
 	}
 }

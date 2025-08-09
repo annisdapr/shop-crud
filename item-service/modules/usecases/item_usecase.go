@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// ItemUsecase mendefinisikan logika bisnis untuk item.
 type ItemUsecase interface {
 	CreateItem(ctx context.Context, req models.CreateItemRequest) (*models.Item, error)
 	GetAllItems(ctx context.Context) ([]models.Item, error)
@@ -22,7 +21,6 @@ type itemUsecase struct {
 	itemRepo repositories.ItemRepository
 }
 
-// NewItemUsecase adalah constructor untuk usecase item.
 func NewItemUsecase(itemRepo repositories.ItemRepository) ItemUsecase {
 	return &itemUsecase{itemRepo: itemRepo}
 }
@@ -53,10 +51,9 @@ func (u *itemUsecase) GetItemByID(ctx context.Context, id uuid.UUID) (*models.It
 }
 
 func (u *itemUsecase) UpdateItem(ctx context.Context, id uuid.UUID, req models.UpdateItemRequest) (*models.Item, error) {
-	// Pertama, dapatkan item yang ada untuk memastikan item tersebut ada
 	existingItem, err := u.itemRepo.FindByID(ctx, id)
 	if err != nil {
-		return nil, err // Akan mengembalikan error jika tidak ditemukan
+		return nil, err 
 	}
 
 	// Update field
@@ -74,7 +71,6 @@ func (u *itemUsecase) UpdateItem(ctx context.Context, id uuid.UUID, req models.U
 }
 
 func (u *itemUsecase) DeleteItem(ctx context.Context, id uuid.UUID) error {
-	// Pastikan item ada sebelum menghapus
 	_, err := u.itemRepo.FindByID(ctx, id)
 	if err != nil {
 		return err

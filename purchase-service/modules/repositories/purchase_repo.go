@@ -10,7 +10,6 @@ import (
 )
 
 type PurchaseRepository interface {
-	// CreatePurchaseInTx menjalankan semua query dalam satu transaksi database.
 	CreatePurchaseInTx(ctx context.Context, purchase *purchaseModels.Purchase, items []purchaseModels.PurchaseItem) error
 	FindPurchasesByUserID(ctx context.Context, userID uuid.UUID) ([]purchaseModels.Purchase, error)
 	FindPurchaseItemsByPurchaseID(ctx context.Context, purchaseID uuid.UUID) ([]purchaseModels.PurchaseItem, error)
@@ -25,46 +24,37 @@ func NewPurchaseRepository(db *pgxpool.Pool) PurchaseRepository {
 }
 
 func (r *purchaseRepository) CreatePurchaseInTx(ctx context.Context, purchase *purchaseModels.Purchase, items []purchaseModels.PurchaseItem) error {
-	// 1. Memulai transaksi menggunakan db.Begin() dari pgxpool
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
-	// Defer Rollback akan membatalkan transaksi jika terjadi panic atau error sebelum Commit.
 	defer tx.Rollback(ctx)
 
-	// 2. Buat record di tabel 'purchases' menggunakan tx.Exec()
 	purchaseQuery := `INSERT INTO purchases (id, user_id, total_amount, created_at) VALUES ($1, $2, $3, $4)`
 	_, err = tx.Exec(ctx, purchaseQuery, purchase.ID, purchase.UserID, purchase.TotalAmount, purchase.CreatedAt)
 	if err != nil {
 		return err
 	}
 
-	// 3. Loop melalui setiap item yang dibeli
 	itemQuery := `INSERT INTO purchase_items (id, purchase_id, item_id, quantity, price_at_purchase) VALUES ($1, $2, $3, $4, $5)`
 	updateStockQuery := `UPDATE items SET stock = stock - $1 WHERE id = $2 AND stock >= $1`
 
 	for _, item := range items {
-		// 3a. Buat record di 'purchase_items'
 		_, err = tx.Exec(ctx, itemQuery, uuid.New(), purchase.ID, item.ItemID, item.Quantity, item.PriceAtPurchase)
 		if err != nil {
 			return err
 		}
 
-		// 3b. Update stok di tabel 'items'.
 		result, err := tx.Exec(ctx, updateStockQuery, item.Quantity, item.ItemID)
 		if err != nil {
 			return err
 		}
-		// Cek apakah ada baris yang terpengaruh untuk memastikan stok cukup.
+
 		if result.RowsAffected() == 0 {
-			// Jika tidak ada baris yang diupdate, berarti stok tidak cukup.
-			// Kembalikan pgx.ErrNoRows agar bisa ditangani di usecase.
 			return pgx.ErrNoRows
 		}
 	}
 
-	// 4. Jika semua query berhasil, commit transaksi.
 	return tx.Commit(ctx)
 }
 
