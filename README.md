@@ -1,6 +1,6 @@
 # Observability Integration with Grafana for shop-crud Project
 
-This document provides a comprehensive guide for the `shop-crud` project. It covers the initial setup and demonstrates how to integrate a complete observability stack using Grafana for visualization, Grafana Tempo for distributed tracing, and Grafana Loki with Promtail for structured logging.
+This document provides a comprehensive guide for the `shop-crud` project. It demonstrates how to integrate an observability stack using Grafana for visualization, Grafana Tempo for distributed tracing, and Grafana Loki with Promtail for structured logging.
 
 ## About Project
 ### Project Structure
@@ -8,85 +8,130 @@ This document provides a comprehensive guide for the `shop-crud` project. It cov
 The project follows a clean architecture pattern with clear separation of concerns. Here's the detailed structure:
 
 ```
-codex-apm-o2-local/
-├── docker-compose.yaml          # Main Docker Compose file for all services
-├── Dockerfile                   # Base Dockerfile
-├── README.md                    # This documentation
-├── db/
-│   └── init.sql                # Database initialization script
+C:.
+│   .env.example                    # Example of .env to be used as a template
+│   .gitignore                      # Git configuration to exclude files/folders from version control
+│   docker-compose-app.yaml        # Compose file for spinning up the entire app (microservices)
+│   Dockerfile                     # Dockerfile for building the root service (if applicable)
+│   README.md                      # Project documentation
 │
-├── user-service/               # User management microservice
-│   ├── docker-compose.yaml    # Service-specific Docker Compose
-│   ├── Dockerfile              # Service-specific Dockerfile
-│   ├── go.mod                  # Go module dependencies
-│   ├── go.sum                  # Go module checksums
-│   ├── main.go                 # Service entry point
-│   ├── config/
-│   │   ├── config.go          # Configuration management
-│   │   └── database.go        # Database connection setup
-│   ├── docs/
-│   │   └── api.md             # API documentation
-│   ├── module/
-│   │   ├── handlers/          # HTTP request handlers
-│   │   │   └── user_handler.go
-│   │   ├── models/            # Data models and DTOs
-│   │   │   └── user.go
-│   │   ├── repositories/      # Data access layer
-│   │   │   └── user_repo.go
-│   │   └── usecases/          # Business logic layer
-│   │       └── user_usecase.go
-│   └── pkg/
-│       └── tracing/           # OpenTelemetry tracing setup
-│           └── tracing.go
+├───db
+│       init.sql                   # SQL script to initialize shared database structure or schema
 │
-├── item-service/               # Item/Product management microservice
-│   ├── docker-compose.yml     # Service-specific Docker Compose
-│   ├── Dockerfile              # Service-specific Dockerfile
-│   ├── go.mod                  # Go module dependencies
-│   ├── go.sum                  # Go module checksums
-│   ├── main.go                 # Service entry point
-│   ├── config/
-│   │   ├── config.go          # Configuration management
-│   │   └── database.go        # Database connection setup
-│   ├── middleware/
-│   │   └── auth.go            # Authentication middleware
-│   ├── modules/
-│   │   ├── handlers/          # HTTP request handlers
-│   │   │   └── item_handler.go
-│   │   ├── models/            # Data models and DTOs
-│   │   │   └── item.go
-│   │   ├── repositories/      # Data access layer
-│   │   │   └── item_repo.go
-│   │   └── usecases/          # Business logic layer
-│   │       └── item_usecase.go
-│   └── tracing/               # OpenTelemetry tracing setup
-│       └── tracing.go
+├───doc
+│   └───img                        # Documentation images/screenshots
 │
-└── purchase-service/           # Purchase/Transaction management microservice
-    ├── docker-compose.yml     # Service-specific Docker Compose
-    ├── Dockerfile              # Service-specific Dockerfile
-    ├── go.mod                  # Go module dependencies
-    ├── go.sum                  # Go module checksums
-    ├── main.go                 # Service entry point
-    ├── config/
-    │   ├── config.go          # Configuration management
-    │   └── database.go        # Database connection setup
-    ├── db/
-    │   └── init.sql           # Service-specific database initialization
-    ├── middleware/
-    │   └── auth.go            # Authentication middleware
-    ├── modules/
-    │   ├── handlers/          # HTTP request handlers
-    │   │   └── purchase_handler.go
-    │   ├── models/            # Data models and DTOs
-    │   │   └── purchase.go
-    │   ├── repositories/      # Data access layer
-    │   │   └── purchase_repo.go
-    │   └── usecases/          # Business logic layer
-    │       └── purchase_usecase.go
-    └── pkg/
-        └── tracing/           # OpenTelemetry tracing setup
-            └── tracing.go
+├───item-service                   # Microservice responsible for item-related operations
+│   │   .env.item.example          # Example environment variables specific to item service
+│   │   docker-compose.yml        # Compose file for running the item service in isolation
+│   │   Dockerfile                # Dockerfile to build item service image
+│   │   go.mod                    # Go module definition
+│   │   go.sum                    # Go dependency checksums
+│   │   main.go                   # Entry point of the item service
+│   │
+│   ├───config
+│   │       config.go             # Loads service configurations
+│   │       database.go          # Sets up database connection
+│   │
+│   ├───db
+│   │   └───init.sql             # Item service-specific schema init
+│   ├───doc                      # Optional documentation folder
+│   ├───middleware
+│   │       auth.go              # Middleware for authentication (JWT)
+│   │
+│   ├───modules
+│   │   ├───handlers
+│   │   │       item_handler.go  # HTTP handlers for item operations
+│   │   ├───models
+│   │   │       item.go          # Data models for items
+│   │   ├───repositories
+│   │   │       item_repo.go     # Database operations for items
+│   │   └───usecases
+│   │           item_usecase.go  # Business logic for items
+│   │
+│   └───pkg
+│       ├───logger
+│       │       logger.go        # Logger initialization (zap/logrus/etc.)
+│       └───tracing
+│               tracing.go       # Tracing setup using OpenTelemetry
+│
+├───purchase-service              # Microservice responsible for handling purchases
+│   │   .env.purchase.example     # Template for env
+│   │   docker-compose.yml       # Compose file to run purchase service individually
+│   │   Dockerfile               # Dockerfile to build the purchase service
+│   │   go.mod                   # Go module definition
+│   │   go.sum                   # Go dependency checksums
+│   │   main.go                  # Entry point of the purchase service
+│   │
+│   ├───config
+│   │       config.go            # Loads service-specific configurations
+│   │       database.go         # Sets up PostgreSQL DB connection
+│   │
+│   ├───db
+│   │       init.sql            # Schema/init SQL for purchase DB
+│   │
+│   ├───middleware
+│   │       auth.go             # JWT auth middleware
+│   │
+│   ├───modules
+│   │   ├───clients
+│   │   │       item_client.go  # HTTP client to communicate with item service
+│   │   ├───handlers
+│   │   │       purchase_handler.go  # Handles incoming purchase HTTP requests
+│   │   ├───models
+│   │   │       purchase.go     # Purchase data model
+│   │   ├───repositories
+│   │   │       purchase_repo.go  # DB operations for purchase records
+│   │   └───usecases
+│   │           purchase_usecase.go  # Business logic for processing purchases
+│   │
+│   └───pkg
+│       ├───logger
+│       │       logger.go       # Logger configuration
+│       └───tracing
+│               tracing.go      # Tracing setup with OpenTelemetry
+│
+├───tracing-compose               # Observability stack configuration (Grafana, Loki, Tempo, Promtail)
+│       docker-compose-grafana.yaml    # Compose file to run Grafana
+│       docker-compose-loki.yaml       # Loki log aggregation setup
+│       docker-compose-promtail.yaml   # Promtail for collecting and shipping logs to Loki
+│       docker-compose-tempo.yaml      # Tempo for tracing
+│       docker-compose-trgrafana.yaml  # Grafana dashboards with tracing config
+│       loki-config.yaml               # Loki configuration file
+│       promtail-config.yaml           # Promtail configuration file
+│       tempo.yaml                     # Tempo configuration
+│
+└───user-service                  # Microservice responsible for user registration and authentication
+    │   .env.user.example         # Example .env
+    │   docker-compose.yaml       # Compose file for user service
+    │   Dockerfile                # Dockerfile for user service image
+    │   go.mod                    # Go module file
+    │   go.sum                    # Dependency checksum
+    │   main.go                   # Application entry point
+    │
+    ├───config
+    │       config.go             # Configuration loader
+    │       database.go           # Database connection
+    │
+    ├───docs
+    │       api.md                # API documentation for user service
+    │
+    ├───module
+    │   ├───handlers
+    │   │       user_handler.go   # Handles user registration/login HTTP endpoints
+    │   ├───models
+    │   │       user.go           # User data model
+    │   ├───repositories
+    │   │       user_repo.go      # DB logic related to users
+    │   └───usecases
+    │           user_usecase.go   # Business logic for user-related actions
+    │
+    └───pkg
+        ├───logger
+        │       logger.go         # Logging configuration
+        └───tracing
+                tracing.go        # Tracing configuration
+
 ```
 
 ### Architecture Overview
@@ -356,6 +401,30 @@ Create a new purchase (requires authentication).
 - `409 Conflict`: Item not found or insufficient stock
 - `500 Internal Server Error`: Server error
 
+#### GET /purchases
+Get user's purchase history (requires authentication).
+
+**Responses:**
+- `200 OK`: Successfully retrieved purchase history
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440003",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "total_amount": 3100.00,
+    "created_at": "2025-01-01T10:00:00Z",
+    "items": [
+      {
+        "item_id": "550e8400-e29b-41d4-a716-446655440001",
+        "quantity": 2,
+        "name": "Laptop Gaming",
+        "price": 1500.00
+      }
+    ]
+  }
+]
+```
+
 ### Error Response Format
 
 All endpoints return errors in a consistent format:
@@ -379,225 +448,12 @@ All endpoints return errors in a consistent format:
 
 ### Service Ports
 
-- **User Service**: `8081`
-- **Item Service**: `8082`
-- **Purchase Service**: `8083`
-- **OpenObserve UI**: `5080`
-- **OpenObserve Logs**: `5081`
-- **OpenObserve Metrics**: `5082`
-- **OpenObserve OTLP Traces**: `5083`
-
-
-## Adding Distributed Tracing with Grafana Tempo
-
-
-### Step 1: Create Docker Compose Files for Grafana & Tempo
-The first step is to define the Grafana (for visualization) and Tempo (for trace storage) services in their respective docker-compose files. This allows us to manage the observability stack separately from the application stack.
-
-Create a file named docker-compose-grafana.yaml inside the tracing-compose folder. This file will run the Grafana service. Ensure its content is as follows:
-
-```yaml
-services:
-  grafana:
-    image: grafana/grafana-oss:latest
-    container_name: grafana
-    restart: always
-    ports:
-      - "3001:3000"
-    volumes:
-      - ./grafana-data:/var/lib/grafana
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    networks:
-      - microservices-net
-
-networks:
-  microservices-net:
-    external: true
-```
-
-Next, create a file named docker-compose-tempo.yaml in the same folder. This file will run the Grafana Tempo service. Ensure its content is as follows:
-
-```yaml
-services:
-  tempo:
-    image: grafana/tempo:latest
-    container_name: tempo
-    restart: always
-    ports:
-      - "3200:3200"  # tempo query
-      - "4317:4317"  # OTLP gRPC receiver
-      - "4318:4318"  # OTLP HTTP receiver
-    command: [ "-config.file=/etc/tempo.yaml" ]
-    volumes:
-      - ./tempo.yaml:/etc/tempo.yaml
-      - ./tempo-data:/var/tempo
-    networks:
-      - microservices-net
-
-networks:
-  microservices-net:
-    external: true
-
-```
-
-### Step 2: Create the Tempo Configuration File
-After defining the services, we need to create a configuration file to tell Tempo how to receive and store trace data.
-
-tempo.yaml File
-Create a file named tempo.yaml inside the tracing-compose folder. This is the basic configuration for Tempo. Ensure its content is as follows:
-
-```yaml
-  auth_enabled: false
-
-  server:
-    http_listen_port: 3200
-    log_level: info
-
-  distributor:
-    receivers:
-      otlp:
-        protocols:
-          grpc:
-            endpoint: 0.0.0.0:4317 
-          http:
-            endpoint: 0.0.0.0:4318 
-
-  ingester:
-    trace_idle_period: 10s
-    max_block_bytes: 1_048_576
-    max_block_duration: 5m
-
-  compactor:
-    compaction:
-      block_retention: 1h
-
-  storage:
-    trace:
-      backend: local
-      local:
-        path: /tmp/tempo
-      wal:
-        path: /tmp/tempo/wal
-```
-
-
-## Adding Logging with Grafana Loki and Promtail
-
-### Step 1: Create Docker Compose Files for Loki & Promtail
-
-Just like with Tempo and Grafana, we will define Loki and Promtail in their own respective `docker-compose` files.
-
-Create a file named `docker-compose-loki.yaml` inside the `tracing-compose` folder. This file will run the Grafana Loki service. Ensure its content is as follows:
-
-```yaml
-services:
-  loki:
-    image: grafana/loki:latest
-    container_name: loki
-    restart: unless-stopped
-    command: ["-config.file=/etc/loki/config.yaml"]
-    volumes:
-      - ./loki-config.yaml:/etc/loki/config.yaml
-    ports:
-      - "3100:3100" # Loki port
-    networks:
-      - microservices-net
-
-networks:
-  microservices-net:
-    external: true
-```
-
-Next, create a file named docker-compose-promtail.yaml in the same folder. This file will run Promtail, the log collection agent. Ensure its content is as follows:
-
-```yaml
-services:
-  promtail:
-    image: grafana/promtail:latest
-    container_name: promtail
-    restart: unless-stopped
-    user: root
-    group_add:
-      - "999" # GANTI 999 DENGAN ID GRUP DOCKER ANDA (jika diperlukan)
-    command: ["-config.file=/etc/promtail/config.yaml"]
-    volumes:
-      - ./promtail-config.yaml:/etc/promtail/config.yaml
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - microservices-net
-
-networks:
-  microservices-net:
-    external: true
-
-```
-
-### Step 2: Create Configuration Files for Loki & Promtail
-
-
-Create a file named loki-config.yaml inside the tracing-compose folder. This is the basic configuration for Loki. Ensure its content is as follows:
-
-```yaml
-auth_enabled: false
-
-server:
-  http_listen_port: 3100
-
-common:
-  path_prefix: /tmp/loki
-  storage:
-    filesystem:
-      chunks_directory: /tmp/loki/chunks
-      rules_directory: /tmp/loki/rules
-  replication_factor: 1
-  ring:
-    instance_addr: 127.0.0.1
-    kvstore:
-      store: inmemory
-
-schema_config:
-  configs:
-    - from: 2020-10-24
-      store: boltdb-shipper
-      object_store: filesystem
-      schema: v11
-      index:
-        prefix: index_
-        period: 24h
-
-limits_config:
-  allow_structured_metadata: false
-
-ruler:
-  alertmanager_url: http://localhost:9093
-```
-
-Finally, create a file named promtail-config.yaml in the same folder. This file tells Promtail to automatically discover logs from all running Docker containers. Ensure its content is as follows:
-
-```yaml
-server:
-  http_listen_port: 9080
-  grpc_listen_port: 0
-
-positions:
-  filename: /tmp/positions.yaml
-
-clients:
-  - url: http://loki:3100/loki/api/v1/push
-
-scrape_configs:
-  - job_name: containers
-    docker_sd_configs:
-      - host: unix:///var/run/docker.sock
-        refresh_interval: 5s
-    relabel_configs:
-      - source_labels: ['__meta_docker_container_name']
-        regex: '/(.*)'
-        target_label: 'container'
-```
+- **User Service**: `5000`
+- **Item Service**: `5001`
+- **Purchase Service**: `5002`
+- **Grafana**: `3001`
+- **Tempo**: `3200`
+- **Loki**: `3100`
 
 ## Example Tracing and Logging in a Go Handler
 
@@ -645,32 +501,39 @@ func (h *UserHandler) Register(c echo.Context) error {
 Open your web browser and access the Grafana dashboard at the following address:
 http://localhost:5080
 
-Log in using the default credentials if you haven't changed them:
-```
-Username: admin
-Password: admin
-```
+Log in using the default credentials
+![Deskripsi Gambar](doc/img/Login.png)
+
+
 ### Step 2: Add data source for Tempo
 1. In the left menu, go to Administration > Data sources.
+![Deskripsi Gambar](doc/img/home.png)
 2. Click "Add new data source".
+![Deskripsi Gambar](doc/img/data.png)
 3. Search for and select Tempo.
 4. In the settings page, under Connection, set the URL to:
 http://tempo:3200
+![Deskripsi Gambar](doc/img/tempo.png)
 5. Scroll down and click "Save & test". You should see a "Data source is working" message
+![Deskripsi Gambar](doc/img/datas.png)
 
 ### Step 3: Add data source for Loki
-1. In the left menu, go to Administration > Data sources.
-2. Click "Add new data source".
-3. Search for and select Loki.
-4. In the settings page, under Connection, set the URL to:
-http://tempo:3100
-5. Scroll down and click "Save & test". You should see a "Data source is working" message
-
+1. Click "Add new data source".
+2. Search for and select Loki.
+3. In the settings page, under Connection, set the URL to:
+http://loki:3100
+![Deskripsi Gambar](doc/img/loki.png)
+4. Scroll down and click "Save & test". You should see a "Data source is working" message
+![Deskripsi Gambar](doc/img/lokis.png)
 
 ### Step 4: View Traces and Logs
 1. In the left menu, click the compass icon (🧭 Explore).
+![Deskripsi Gambar](doc/img/explore.png)
 2. Select the Tempo data source from the dropdown at the top.
 3. Click on any trace in the list to open the flame graph.
+![Deskripsi Gambar](doc/img/etrace.png)
 4. Click on a specific span within the trace.
+![Deskripsi Gambar](doc/img/trace.png)
 
 To view logs you can switch to Loki data source and explore the logs.
+![Deskripsi Gambar](doc/img/logs.png)

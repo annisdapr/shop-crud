@@ -21,7 +21,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	//	echojwt "github.com/labstack/echo-jwt/v4"
 )
 
 type CustomValidator struct {
@@ -36,7 +35,7 @@ func (cv *CustomValidator) Validate(i interface{}) error {
 }
 
 func main() {
-	   // Initialize tracing provider
+   // Initialize tracing provider
    tp, err := tracing.InitTracerProvider("item-service", "tempo:4318")
    if err != nil {
        log.Fatal(err)
@@ -47,7 +46,6 @@ func main() {
        }
    }()
    otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
-	// Inisialisasi koneksi database dari config package
 	config.InitDB()
 	defer config.CloseDB()
 
@@ -69,23 +67,11 @@ func main() {
 
 	e.Use(otelecho.Middleware("item-service"))
 	v1 := e.Group("/api/v1")
-
-	// Inisialisasi repository, usecase, handler
 	itemRepo := repositories.NewItemRepository(config.DBPool)
 	itemUsecase := usecases.NewItemUsecase(itemRepo)
 	itemHandler := handlers.NewItemHandler(itemUsecase)
-
-	// Registrasi route dengan middleware JWT (opsional)
-	// itemHandler.RegisterRoutes(v1, middleware.JWTWithConfig(middleware.JWTConfig{
-	// 	SigningKey: []byte(jwtSecret),
-	// }))
-	// itemHandler.RegisterRoutes(v1, echojwt.WithConfig(echojwt.Config{
-	// SigningKey: []byte(jwtSecret),
-	// }))
 	itemHandler.RegisterRoutes(v1, authmiddle.JWTAuthMiddleware(jwtSecret))
 
-
-	// Jalankan server
 	addr := fmt.Sprintf(":%s", appPort)
 	log.Printf("✅ Item service berjalan di port %s", appPort)
 	if err := e.Start(addr); err != nil && err != http.ErrServerClosed {

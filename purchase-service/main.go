@@ -15,7 +15,6 @@ import (
 	"purchase-service/pkg/tracing"
 
 	authmiddle "purchase-service/middleware"
-	//itemRepositories "shop-crud/item-service/modules/repositories"
 	"purchase-service/modules/clients"
 
 	"github.com/go-playground/validator/v10"
@@ -38,7 +37,6 @@ func (cv *CustomValidator) Validate(i interface{}) error {
 }
 
 func main() {
-	   // Initialize tracing provider
    tp, err := tracing.InitTracerProvider("purchase-service", "tempo:4318")
    if err != nil {
        log.Fatal(err)
@@ -50,7 +48,6 @@ func main() {
    }()
    otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
-	// Inisialisasi koneksi DB dari config
 	config.InitDB()
 	defer config.CloseDB()
 
@@ -63,9 +60,10 @@ func main() {
 	if jwtSecret == "" {
 		jwtSecret = "secret"
 	}
+
 	e := echo.New()
 	e.Use(otelecho.Middleware("purchase-service"))
-	// Setup Echo
+
 
 	e.Validator = &CustomValidator{validator: validator.New()}
 	e.Use(middleware.Logger())
@@ -75,17 +73,11 @@ func main() {
 
 	// Init repo & usecase dengan shared DB
 	purchaseRepo := repositories.NewPurchaseRepository(config.DBPool)
-	//itemRepo := itemRepositories.NewItemRepository(config.DBPool)
-	//purchaseUsecase := usecases.NewPurchaseUsecase(purchaseRepo, itemRepo)
 	itemClient := clients.NewItemClient("http://item-service:5001/api/v1")
 	purchaseUsecase := usecases.NewPurchaseUsecase(purchaseRepo, itemClient)
-	// Handler
 	purchaseHandler := handlers.NewPurchaseHandler(purchaseUsecase)
-
 	purchaseHandler.RegisterRoutes(v1, authmiddle.JWTAuthMiddleware(jwtSecret))
 
-
-	// Start server
 	addr := fmt.Sprintf(":%s", appPort)
 	log.Printf("✅ Purchase service berjalan di port %s", appPort)
 	if err := e.Start(addr); err != nil && err != http.ErrServerClosed {

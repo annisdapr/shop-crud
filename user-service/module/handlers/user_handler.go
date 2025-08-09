@@ -1,7 +1,6 @@
 package handlers
 
 import (
-//    "context"
    "errors"
    "net/http"
    "user-service/module/models"
@@ -10,21 +9,17 @@ import (
 
    "go.opentelemetry.io/otel"
    "go.opentelemetry.io/otel/attribute"
-//    "go.opentelemetry.io/otel/trace"
-"user-service/pkg/logger" 
+   "user-service/pkg/logger" 
 )
 
-// UserHandler memegang dependency ke usecase. Strukturnya tetap sama.
 type UserHandler struct {
 	userUsecase usecases.UserUsecase
 }
 
-// NewUserHandler adalah constructor, tidak berubah.
 func NewUserHandler(userUsecase usecases.UserUsecase) *UserHandler {
 	return &UserHandler{userUsecase: userUsecase}
 }
 
-// RegisterRoutes mendaftarkan semua endpoint yang berhubungan dengan user ke router Echo.
 func (h *UserHandler) RegisterRoutes(router *echo.Group) {
 	userGroup := router.Group("/users")
 	{
@@ -32,17 +27,14 @@ func (h *UserHandler) RegisterRoutes(router *echo.Group) {
 		userGroup.POST("/login", h.Login)
 	}
 }
-
-// Register adalah handler untuk endpoint registrasi, versi Echo.
 func (h *UserHandler) Register(c echo.Context) error {
    var req models.RegisterRequest
    // start tracing span for RegisterHandler
    tracer := otel.Tracer("user-service-handler")
    ctx, span := tracer.Start(c.Request().Context(), "RegisterHandler")
    defer span.End()
-   // set route and email attributes after binding
-	
-	// 1. Binding request body ke struct.
+
+	// 1. Binding request body to struct.
    if err := c.Bind(&req); err != nil {
 		logger.Error(ctx, "Failed to bind register request: "+err.Error())
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
@@ -53,7 +45,7 @@ func (h *UserHandler) Register(c echo.Context) error {
        attribute.String("user.email", req.Email),
    )
 
-	// 2. Validasi struct menggunakan validator yang kita daftarkan di main.go.
+	// 2. Struct validation with validator from main.go.
 	if err := c.Validate(&req); err != nil {
 		logger.Error(ctx, "Validation failed on register: "+err.Error())
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -72,7 +64,6 @@ func (h *UserHandler) Register(c echo.Context) error {
 	return c.JSON(http.StatusCreated, user) // 201 Created
 }
 
-// Login adalah handler untuk endpoint login, versi Echo.
 func (h *UserHandler) Login(c echo.Context) error {
 	var req models.LoginRequest
 	tracer := otel.Tracer("user-service-handler")

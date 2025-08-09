@@ -1,31 +1,32 @@
 # --- STAGE 1: BUILDER ---
 FROM golang:1.23-alpine AS builder
 
-# Set direktori kerja utama
+# Set main working directory
 WORKDIR /app
 
-# Salin SEMUA file dari proyek Anda ke dalam container terlebih dahulu.
-# Ini penting agar 'replace' di go.mod bisa menemukan path relatif seperti '../item-service'.
+# Copy ALL project files into the container.
+# This ensures 'replace' in go.mod can resolve relative paths like '../item-service'.
 COPY . .
 
-# ✅ DIUBAH: Pindah ke direktori layanan yang spesifik.
+# ✅ Changed: Move to the specific service directory
 WORKDIR /app/user-service
 
-# Jalankan 'go mod tidy' dari dalam direktori layanan.
-# Ini akan mengunduh dependensi berdasarkan go.mod di folder ini.
+# Run 'go mod tidy' to install dependencies for this service
 RUN go mod tidy
 
-# Build aplikasi dari direktori saat ini ('.').
-# Go akan otomatis menemukan main.go di sini.
-# Output binary diberi nama 'main' dan diletakkan di root direktori container.
+# Build the app from the current directory ('.')
+# Output binary named 'main' is placed in the container root
 RUN CGO_ENABLED=0 go build -ldflags="-w -s" -o /main .
 
 # --- STAGE 2: FINAL IMAGE ---
 FROM alpine:latest
 WORKDIR /app
 
-# Salin HANYA binary yang sudah di-build dari stage builder.
+# Copy ONLY the built binary from the builder stage
 COPY --from=builder /main .
 
+# Expose service port
 EXPOSE 5000
+
+# Run the binary
 CMD ["./main"]

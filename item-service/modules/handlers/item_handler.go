@@ -21,15 +21,14 @@ func NewItemHandler(itemUsecase usecases.ItemUsecase) *ItemHandler {
 	return &ItemHandler{itemUsecase: itemUsecase}
 }
 
-// RegisterRoutes mendaftarkan semua endpoint yang berhubungan dengan item.
 func (h *ItemHandler) RegisterRoutes(router *echo.Group, authMiddleware echo.MiddlewareFunc) {
 	itemGroup := router.Group("/items")
 	
-	// Endpoint yang tidak memerlukan otentikasi
+	// Endpoint no need authentication
 	itemGroup.GET("", h.GetAllItems)
 	itemGroup.GET("/:id", h.GetItemByID)
 
-	// Endpoint yang memerlukan otentikasi (misalnya, untuk admin)
+	// Endpoint REQUIRED authentication
 	itemGroup.POST("", h.CreateItem, authMiddleware)
 	itemGroup.PUT("/:id", h.UpdateItem, authMiddleware)
 	itemGroup.DELETE("/:id", h.DeleteItem, authMiddleware)
@@ -49,7 +48,7 @@ func (h *ItemHandler) CreateItem(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	// Tambahkan attribute tracing
+	// Add attribute tracing
 	span.SetAttributes(
 		attribute.String("item.name", req.Name),
 		attribute.Float64("item.price", req.Price),

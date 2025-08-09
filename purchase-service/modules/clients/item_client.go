@@ -11,7 +11,6 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-// DTO untuk response dari item-service
 type ItemResponse struct {
 	ID    uuid.UUID `json:"id"`
 	Name  string    `json:"name"`
@@ -33,13 +32,12 @@ func NewItemClient(baseURL string) ItemClient {
 		baseURL: baseURL,
 		client: &http.Client{
 			Timeout:   5 * time.Second,
-			Transport: otelhttp.NewTransport(http.DefaultTransport), // Penting untuk tracing
+			Transport: otelhttp.NewTransport(http.DefaultTransport), 
 		},
 	}
 }
 
 func (c *itemClient) GetItemByID(ctx context.Context, itemID uuid.UUID) (*ItemResponse, error) {
-	// ✅ Gunakan otelhttp.NewRequestWithContext agar header tracing ditambahkan
 	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/items/%s", c.baseURL, itemID), nil)
 	if err != nil {
 		return nil, err

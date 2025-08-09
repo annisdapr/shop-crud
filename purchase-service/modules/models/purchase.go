@@ -43,3 +43,20 @@ type PurchaseItemResponse struct {
 	Name     string    `json:"name"`
 	Price    float64   `json:"price"`
 }
+
+type PurchaseHistoryResponse struct {
+	PurchaseID   uuid.UUID             `json:"purchase_id"`
+	TotalAmount  float64               `json:"total_amount"`
+	PurchasedAt  time.Time             `json:"purchased_at"`
+	Items        []PurchaseItemHistory `json:"items"`
+}
+
+type PurchaseItemHistory struct {
+	ItemID          uuid.UUID `json:"item_id"`
+	Name            string    `json:"name"`
+	Quantity        int       `json:"quantity"`
+	PriceAtPurchase float64   `json:"price_at_purchase"`
+	TotalPrice      float64   `json:"total_price"`
+}
+
+

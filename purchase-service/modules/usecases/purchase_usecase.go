@@ -36,7 +36,6 @@ type purchaseUsecase struct {
 func NewPurchaseUsecase(purchaseRepo purchaseRepos.PurchaseRepository, itemClient clients.ItemClient) PurchaseUsecase {
 	return &purchaseUsecase{
 		purchaseRepo: purchaseRepo,
-		//itemRepo:     itemRepo,
 		itemClient:   itemClient,
 	}
 }
@@ -113,7 +112,35 @@ func (u *purchaseUsecase) CreatePurchase(ctx context.Context, userID uuid.UUID, 
 
 
 func (u *purchaseUsecase) GetPurchaseHistory(ctx context.Context, userID uuid.UUID) ([]purchaseModels.Purchase, error) {
-	// Implementasi untuk mengambil riwayat pembelian
-	// (dapat ditambahkan di kemudian hari)
-	return u.purchaseRepo.FindPurchasesByUserID(ctx, userID)
+	purchases, err := u.purchaseRepo.FindPurchasesByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, p := range purchases {
+		items, err := u.purchaseRepo.FindPurchaseItemsByPurchaseID(ctx, p.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		var itemResponses []purchaseModels.PurchaseItemResponse
+		for _, item := range items {
+			// Ambil detail item dari itemRepo
+			itemDetail, err := u.itemClient.GetItemByID(ctx, item.ItemID)
+			if err != nil {
+				return nil, err
+			}
+
+			itemResponses = append(itemResponses, purchaseModels.PurchaseItemResponse{
+				ItemID:   item.ItemID,
+				Quantity: item.Quantity,
+				Name:     itemDetail.Name,
+				Price:    item.PriceAtPurchase,
+			})
+		}
+
+		purchases[i].Items = itemResponses
+	}
+
+	return purchases, nil
 }

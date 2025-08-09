@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ItemRepository mendefinisikan interface untuk operasi data item.
 type ItemRepository interface {
 	Create(ctx context.Context, item *models.Item) error
 	FindAll(ctx context.Context) ([]models.Item, error)
@@ -24,7 +23,6 @@ type itemRepository struct {
 	db *pgxpool.Pool
 }
 
-// NewItemRepository adalah constructor untuk repository item.
 func NewItemRepository(db *pgxpool.Pool) ItemRepository {
 	return &itemRepository{db: db}
 }

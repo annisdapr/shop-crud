@@ -1,33 +1,33 @@
 # --- STAGE 1: BUILDER ---
 FROM golang:1.23-alpine AS builder
 
-# Install git dan bash karena beberapa package bisa butuh itu saat build
+# Install git and bash (some packages may require them during build)
 RUN apk add --no-cache git bash
 
 # Set working directory
 WORKDIR /app
 
-# Salin go.mod dan go.sum untuk cache dependency layer
+# Copy go.mod and go.sum to cache dependency layers
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Salin seluruh source code (termasuk folder app/)
+# Copy the entire source code (including app/ folder)
 COPY . .
 
-# Build binary dari main.go di folder app/
+# Build the binary from main.go inside the app/ folder
 RUN CGO_ENABLED=0 GOOS=linux go build -o main ./app
 
 # --- STAGE 2: FINAL IMAGE ---
 FROM alpine:latest
 
-# Menyalin binary hasil build ke image final
+# Copy the built binary from the builder stage to the final image
 COPY --from=builder /app/main /app/main
 
 # Set working directory
 WORKDIR /app
 
-# Dokumentasi port (tidak wajib, tapi membantu pembaca)
+# Document the exposed port (optional but useful)
 EXPOSE 5000
 
-# Jalankan binary
+# Run the binary
 CMD ["./main"]
